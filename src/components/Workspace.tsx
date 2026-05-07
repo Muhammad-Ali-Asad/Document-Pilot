@@ -22,11 +22,11 @@ const SERVICE_CONTRACT_TEMPLATE = `
       <tbody>
         <tr>
           <td style="padding: 12px; border: 1px solid #eee; width: 30%; font-weight: bold; color: #1e3a5f;">Contract No.</td>
-          <td style="padding: 12px; border: 1px solid #eee; color: #d93025; font-weight: bold;">[CONTRACT_NUMBER]</td>
+          <td style="padding: 12px; border: 1px solid #eee; color: #d93025; font-weight: bold;">{{CONTRACT_NUMBER}}</td>
         </tr>
         <tr>
           <td style="padding: 12px; border: 1px solid #eee; font-weight: bold; color: #1e3a5f;">Effective Date</td>
-          <td style="padding: 12px; border: 1px solid #eee; color: #d93025; font-weight: bold;">[EFFECTIVE_DATE]</td>
+          <td style="padding: 12px; border: 1px solid #eee; color: #d93025; font-weight: bold;">{{EFFECTIVE_DATE}}</td>
         </tr>
         <tr>
           <td style="padding: 12px; border: 1px solid #eee; font-weight: bold; color: #1e3a5f;">Contract Type</td>
@@ -38,7 +38,7 @@ const SERVICE_CONTRACT_TEMPLATE = `
         </tr>
         <tr>
           <td style="padding: 12px; border: 1px solid #eee; font-weight: bold; color: #1e3a5f;">Prepared For</td>
-          <td style="padding: 12px; border: 1px solid #eee; color: #d93025; font-weight: bold;">[CLIENT_COMPANY_NAME]</td>
+          <td style="padding: 12px; border: 1px solid #eee; color: #d93025; font-weight: bold;">{{CLIENT_COMPANY_NAME}}</td>
         </tr>
       </tbody>
     </table>
@@ -76,31 +76,31 @@ const SERVICE_CONTRACT_TEMPLATE = `
       <tbody>
         <tr>
           <td style="padding: 10px; border: 1px solid #eee; width: 30%; font-weight: bold; color: #1e3a5f;">Company / Name</td>
-          <td style="padding: 10px; border: 1px solid #eee; color: #d93025; font-weight: bold;">[CLIENT_COMPANY_NAME]</td>
+          <td style="padding: 10px; border: 1px solid #eee; color: #d93025; font-weight: bold;">{{CLIENT_COMPANY_NAME}}</td>
         </tr>
         <tr>
           <td style="padding: 10px; border: 1px solid #eee; font-weight: bold; color: #1e3a5f;">Address</td>
-          <td style="padding: 10px; border: 1px solid #eee; color: #d93025; font-weight: bold;">[CLIENT_ADDRESS]</td>
+          <td style="padding: 10px; border: 1px solid #eee; color: #d93025; font-weight: bold;">{{CLIENT_ADDRESS}}</td>
         </tr>
         <tr>
           <td style="padding: 10px; border: 1px solid #eee; font-weight: bold; color: #1e3a5f;">City, State, ZIP</td>
-          <td style="padding: 10px; border: 1px solid #eee; color: #d93025; font-weight: bold;">[CLIENT_CITY_STATE_ZIP]</td>
+          <td style="padding: 10px; border: 1px solid #eee; color: #d93025; font-weight: bold;">{{CLIENT_CITY_STATE_ZIP}}</td>
         </tr>
         <tr>
           <td style="padding: 10px; border: 1px solid #eee; font-weight: bold; color: #1e3a5f;">Country</td>
-          <td style="padding: 10px; border: 1px solid #eee; color: #d93025; font-weight: bold;">[CLIENT_COUNTRY]</td>
+          <td style="padding: 10px; border: 1px solid #eee; color: #d93025; font-weight: bold;">{{CLIENT_COUNTRY}}</td>
         </tr>
         <tr>
           <td style="padding: 10px; border: 1px solid #eee; font-weight: bold; color: #1e3a5f;">Contact Person</td>
-          <td style="padding: 10px; border: 1px solid #eee; color: #d93025; font-weight: bold;">[CLIENT_CONTACT_PERSON]</td>
+          <td style="padding: 10px; border: 1px solid #eee; color: #d93025; font-weight: bold;">{{CLIENT_CONTACT_PERSON}}</td>
         </tr>
         <tr>
           <td style="padding: 10px; border: 1px solid #eee; font-weight: bold; color: #1e3a5f;">Email</td>
-          <td style="padding: 10px; border: 1px solid #eee; color: #d93025; font-weight: bold;">[CLIENT_EMAIL]</td>
+          <td style="padding: 10px; border: 1px solid #eee; color: #d93025; font-weight: bold;">{{CLIENT_EMAIL}}</td>
         </tr>
         <tr>
           <td style="padding: 10px; border: 1px solid #eee; font-weight: bold; color: #1e3a5f;">Phone</td>
-          <td style="padding: 10px; border: 1px solid #eee; color: #d93025; font-weight: bold;">[CLIENT_PHONE]</td>
+          <td style="padding: 10px; border: 1px solid #eee; color: #d93025; font-weight: bold;">{{CLIENT_PHONE}}</td>
         </tr>
       </tbody>
     </table>
@@ -126,8 +126,34 @@ export default function Workspace() {
   const [hasStarted, setHasStarted] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(450);
   const [isDragging, setIsDragging] = useState(false);
+  const [progress, setProgress] = useState<{ currentStep: number; totalSteps: number } | null>(null);
+  const [filledKeys, setFilledKeys] = useState<string[]>([]);
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'failed'>('saved');
+  const [activeTab, setActiveTab] = useState<'editor' | 'assistant'>('editor');
   
   const updateContentRef = useRef<EditorRef>(null);
+
+  // Auto-save logic
+  useEffect(() => {
+    if (!hasStarted) return;
+    
+    const timer = setTimeout(() => {
+      saveDocument();
+    }, 1500); // Debounce manual edits
+
+    return () => clearTimeout(timer);
+  }, [content]);
+
+  const saveDocument = async () => {
+    setSaveStatus('saving');
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 800));
+      setSaveStatus('saved');
+    } catch (error) {
+      setSaveStatus('failed');
+    }
+  };
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -181,6 +207,9 @@ export default function Workspace() {
         role: 'ai',
         content: response.message
       }]);
+      if (response.progress) {
+        setProgress(response.progress);
+      }
     } catch (error: any) {
       setMessages([{
         id: Date.now().toString(),
@@ -203,10 +232,12 @@ export default function Workspace() {
       
       // Apply Document Updates
       if (response.replacements && response.replacements.length > 0 && updateContentRef.current) {
-        // We might have multiple replacements
         response.replacements.forEach(replacement => {
-          // TipTap editor ref logic to replace text
           updateContentRef.current?.updatePlaceholder(replacement.targetPlaceholder, replacement.newText);
+          
+          // Track the filled key
+          const key = replacement.targetPlaceholder.replace(/\{\{|\}\}|\[|\]/g, '');
+          setFilledKeys(prev => prev.includes(key) ? prev : [...prev, key]);
         });
       }
 
@@ -216,6 +247,10 @@ export default function Workspace() {
         role: 'ai',
         content: response.message
       }]);
+
+      if (response.progress) {
+        setProgress(response.progress);
+      }
 
       if (response.isComplete) {
         setIsComplete(true);
@@ -249,8 +284,24 @@ export default function Workspace() {
         <div className="header-center">
           <h2 className="doc-title">{id === 'custom' ? 'Uploaded Document' : 'Service Contract Template'}</h2>
           <div className="save-status">
-            <CheckCircle2 size={14} />
-            <span>All changes saved</span>
+            {saveStatus === 'saving' && (
+              <div className="flex items-center gap-1.5 text-blue-500">
+                <div className="save-spinner"></div>
+                <span>Saving...</span>
+              </div>
+            )}
+            {saveStatus === 'saved' && (
+              <div className="flex items-center gap-1.5 text-green-600">
+                <CheckCircle2 size={14} />
+                <span>All changes saved</span>
+              </div>
+            )}
+            {saveStatus === 'failed' && (
+              <div className="flex items-center gap-1.5 text-red-500">
+                <span className="font-medium">Save failed</span>
+                <button onClick={saveDocument} className="text-xs underline hover:text-red-600">Retry</button>
+              </div>
+            )}
           </div>
         </div>
         
@@ -258,8 +309,15 @@ export default function Workspace() {
           <button className="icon-btn">
             <Cloud size={18} />
           </button>
-          <button className="btn-outline">Save</button>
-          <button className="btn-outline">Export</button>
+          <button 
+            className={`btn-outline ${saveStatus === 'saving' ? 'opacity-50 pointer-events-none' : ''}`}
+            onClick={saveDocument}
+          >
+            {saveStatus === 'saving' ? 'Saving...' : 'Save'}
+          </button>
+          <button className={`btn-outline ${isComplete ? 'btn-export-highlight pulse' : ''}`}>
+            Export
+          </button>
           <div className="user-dropdown">
             <div className="avatar-placeholder">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-user"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -270,8 +328,25 @@ export default function Workspace() {
         </div>
       </div>
 
+      {/* Mobile Tabs */}
+      <div className="mobile-tabs-bar">
+        <button 
+          className={`tab-btn ${activeTab === 'editor' ? 'active' : ''}`}
+          onClick={() => setActiveTab('editor')}
+        >
+          Document
+        </button>
+        <button 
+          className={`tab-btn ${activeTab === 'assistant' ? 'active' : ''}`}
+          onClick={() => setActiveTab('assistant')}
+        >
+          Assistant
+          {progress && progress.currentStep > 0 && <span className="tab-badge"></span>}
+        </button>
+      </div>
+
       {/* Main Split View */}
-      <div className="workspace-content">
+      <div className={`workspace-content ${activeTab}-active`}>
         <div className="editor-panel-wrapper">
           <Editor 
             initialContent={content} 
@@ -280,18 +355,20 @@ export default function Workspace() {
           />
         </div>
 
-        {/* Resizer Handle */}
+        {/* Resizer Handle (Desktop only) */}
         <div 
           className={`resizer ${isDragging ? 'active' : ''}`} 
           onMouseDown={handleMouseDown}
         />
 
-        <div className="chatbot-panel-wrapper" style={{ width: `${sidebarWidth}px`, flexShrink: 0 }}>
+        <div className="chatbot-panel-wrapper" style={{ width: window.innerWidth > 768 ? `${sidebarWidth}px` : '100%', flexShrink: 0 }}>
           <Chatbot 
             messages={messages}
             onSendMessage={handleSendMessage}
             isTyping={isTyping}
             isComplete={isComplete}
+            progress={progress}
+            filledKeys={filledKeys}
           />
         </div>
       </div>

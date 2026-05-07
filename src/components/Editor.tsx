@@ -4,6 +4,9 @@ import Placeholder from '@tiptap/extension-placeholder';
 import { Bold, Italic, Underline, Strikethrough, List, ListOrdered, AlignLeft, Link, Image, Grid, MoreHorizontal, PenTool, ListTree, History, Settings } from 'lucide-react';
 import { forwardRef, useImperativeHandle } from 'react';
 
+import { PlaceholderNode } from './PlaceholderExtension';
+import { HighlightExtension } from './HighlightExtension';
+
 interface EditorProps {
   initialContent: string;
   onChange: (content: string) => void;
@@ -17,11 +20,16 @@ const Editor = forwardRef<EditorRef, EditorProps>(({ initialContent, onChange },
   const editor = useEditor({
     extensions: [
       StarterKit,
+      PlaceholderNode,
+      HighlightExtension,
       Placeholder.configure({
         placeholder: 'Start writing your content here...',
       }),
     ],
     content: initialContent,
+    onCreate: ({ editor }) => {
+      (editor.commands as any).convertTextToPlaceholders();
+    },
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
@@ -31,17 +39,36 @@ const Editor = forwardRef<EditorRef, EditorProps>(({ initialContent, onChange },
     updatePlaceholder: (targetPlaceholder: string, newText: string) => {
       if (!editor) return;
       
-      const html = editor.getHTML();
+      const key = targetPlaceholder.replace(/\{\{|\}\}|\[|\]/g, '');
+
+      // Try replacing via custom node command first
+      const range = (editor.commands as any).replacePlaceholder(key, newText);
       
-      // Simple string replacement for placeholders like [CONTRACT_NUMBER]
-      // We wrap the new text in a span with a specific class just to highlight it briefly
-      const replacementHtml = `<span style="background-color: #e8f0fe; color: #1a73e8; border-radius: 2px; padding: 0 4px; font-weight: bold;">${newText}</span>`;
-      
-      // Use split and join to replace all instances just in case
-      const newHtml = html.split(targetPlaceholder).join(replacementHtml);
-      
-      if (html !== newHtml) {
-        editor.commands.setContent(newHtml);
+      if (range) {
+        // Highlight and Scroll
+        (editor.commands as any).setHighlight(range.from, range.to);
+        editor.commands.scrollIntoView();
+      } else {
+        // Fallback for raw text placeholders if they weren't converted to nodes
+        const { state, view } = editor;
+        const { tr } = state;
+        let foundRange: { from: number; to: number } | null = null;
+
+        state.doc.descendants((node, pos) => {
+          if (node.isText && node.text?.includes(targetPlaceholder)) {
+            const start = pos + node.text.indexOf(targetPlaceholder);
+            const end = start + targetPlaceholder.length;
+            tr.replaceWith(start, end, state.schema.text(newText));
+            foundRange = { from: start, to: start + newText.length };
+            return false;
+          }
+        });
+
+        if (foundRange) {
+          view.dispatch(tr);
+          (editor.commands as any).setHighlight(foundRange.from, foundRange.to);
+          editor.commands.scrollIntoView();
+        }
       }
     }
   }));
